@@ -13,17 +13,67 @@ RPL (Routing Protocol for Low-Power and Lossy Networks) relies on unauthenticate
 The project is structured with a specific Contiki-NG project folder and one modification to the core OS files.
 
 ### Project Folder (`/home/roy1916/contiki-ng/examples/dao-shield-project`)
-* `root-node.c`: Firmware for the `mtype1` (ID 1) DODAG Root. It listens for and logs client data.
-* `client-node.c`: Firmware for the `mtype2` (IDs 2-6) benign nodes. They join the network and send "Hello" packets to the root.
-* [cite_start]`attacker-node.c`: [cite: 4] Firmware for the `mtype3` (ID 7) malicious node. When enabled, it performs a "No-path" DAO flood attack (`rpl_icmp6_dao_output(0)`).
-* [cite_start]`project-conf.h`: [cite: 1] **(CRITICAL)** The configuration file used to switch between experimental scenarios.
-* [cite_start]`dao-baseline.csc`: [cite: 2] The Cooja simulation file, defining the 7-node topology.
+* `root-node.c`: Firmware for the `mtype1` (ID 1) DODAG Root. [cite_start]It listens for and logs client data. [cite: 3]
+* `client-node.c`: Firmware for the `mtype2` (IDs 2-6) benign nodes. [cite_start]They join the network and send "Hello" packets to the root. [cite: 4]
+* `attacker-node.c`: Firmware for the `mtype3` (ID 7) malicious node. [cite_start]When enabled, it performs a "No-path" DAO flood attack (`rpl_icmp6_dao_output(0)`). [cite: 2]
+* `project-conf.h`: **(CRITICAL)** The configuration file used to switch between experimental scenarios.
+* `dao-baseline.csc`: The Cooja simulation file, defining the 7-node topology.
 
 ### Core OS Modification (`/home/roy1916/contiki-ng/os/net/routing/rpl-lite/`)
-* [cite_start]`rpl-dag.c`: [cite: 3] This core RPL file was modified to insert the **Li-MSD shield** logic. The shield hooks into the `rpl_process_dao` function to intercept and validate every DAO packet.
+* `rpl-dag.c`: This core RPL file was modified to insert the **Li-MSD shield** logic. [cite_start]The shield hooks into the `rpl_process_dao` function to intercept and validate every DAO packet. [cite: 1]
 
 ## 3. How to Run the Experiment
-[cite_start]Load the `dao-baseline.csc` [cite: 2] simulation file in Cooja. [cite_start]The three experimental scenarios can be run by changing two macros in `project-conf.h` [cite: 1] and recompiling.
+There are two primary methods to build the firmware and run the simulation.
+
+### Method 1: Cooja GUI (Recommended)
+
+This method allows you to visually see the network and is recommended for analysis.
+
+1.  **Launch Cooja:**
+    * Navigate to the Contiki-NG root directory:
+        ```bash
+        cd /home/roy1916/contiki-ng/
+        ```
+    * Run the `gradlew` command to start the Cooja GUI:
+        ```bash
+        ./gradlew run -Pcooja
+        ```
+
+2.  **Load Simulation:**
+    * In Cooja, go to **File > Open simulation... > Browse**.
+    * Navigate to the project folder: `/home/roy1916/contiki-ng/examples/dao-shield-project/`
+    * Select `dao-baseline.csc` and click **Open**.
+
+3.  **Compile Firmware:**
+    * The simulation will load. A "Compile?" dialog will appear for each of the three mote types (root, client, attacker).
+    * Click **Clean** then **Compile** for each one. Cooja is using the `make` commands already defined in `dao-baseline.csc`, which are:
+        * `make root-node.cooja TARGET=cooja`
+        * `make client-node.cooja TARGET=cooja`
+        * `make attacker-node.cooja TARGET=cooja`
+
+4.  **Run:**
+    * Click the **Start** button in the simulation control window.
+
+### Method 2: Headless (Command Line)
+
+This method runs the simulation directly from your terminal, which is useful for gathering data quickly. It builds the firmware automatically.
+
+1.  **Navigate to Project Directory:**
+    ```bash
+    cd /home/roy1916/contiki-ng/examples/dao-shield-project
+    ```
+
+2.  **Run with Gradle:**
+    * Execute the `gradlew` script (located in the Contiki-NG root) and point it to the `.csc` file:
+    ```bash
+    ../../gradlew run -Pcooja=dao-baseline.csc
+    ```
+*This will start the simulation, automatically build all motes using the `make` commands in the `.csc` file, and begin logging all mote output to your terminal.*
+
+---
+### Configuring the Scenarios
+
+To switch between scenarios, you must **edit the `project-conf.h` file** **before** compiling/running:
 
 ```c
 /* project-conf.h */
@@ -32,41 +82,22 @@ The project is structured with a specific Contiki-NG project folder and one modi
 #define DAO_SHIELD_ENABLED 1   /* 0 = normal, 1 = attacker active */
 ```
 
-### Scenario 1: Baseline (Normal Operation)
-* **Purpose:** Observe a healthy network.
-* **Settings:**
-    ```c
-    #define ENABLE_ATTACK 0
-    #define DAO_SHIELD_ENABLED 0
-    ```
-* **Result:** All client nodes join the network and send data. The root log (`root-node.c`) shows successful data reception.
+* **Scenario 1 (Baseline):** `ENABLE_ATTACK 0`, `DAO_SHIELD_ENABLED 0`
+* **Scenario 2 (Attack, No Shield):** `ENABLE_ATTACK 1`, `DAO_SHIELD_ENABLED 0`
+* **Scenario 3 (Attack, With Shield):** `ENABLE_ATTACK 1`, `DAO_SHIELD_ENABLED 1`
 
-### Scenario 2: Attack (No Shield)
-* **Purpose:** Demonstrate the "No-path" attack's impact.
-* **Settings:**
-    ```c
-    #define ENABLE_ATTACK 1
-    #define DAO_SHIELD_ENABLED 0
-    ```
-* **Result:** The attacker (ID 7) floods the root. The root's log is filled with `[DBG : RPL ] DAO with lifetime 0, expiring route`. Network performance degrades severely.
-
-### Scenario 3: Attack (With Li-MSD Shield)
-* **Purpose:** Test the shield's effectiveness.
-* **Settings:**
-    ```c
-    #define ENABLE_ATTACK 1
-    #define DAO_SHIELD_ENABLED 1
-    ```
-* [cite_start]**Result:** The Li-MSD logic in `rpl-dag.c` [cite: 3] becomes active and begins blocking the malicious DAOs.
+**Important:**
+* If you use **Method 1 (GUI)**, you must click **Clean** and **Compile** again for all motes after changing this file.
+* If you use **Method 2 (Headless)**, the changes will be picked up automatically on the next run.
 
 ## 4. Implementation & Analysis of Li-MSD
 
 ### Iteration 1: The Flawed (Permanent) Blacklist
-The initial implementation (present in `rpl-dag.c`) used a simple threshold and a permanent blacklist.
+[cite_start]The initial implementation (present in `rpl-dag.c`) used a simple threshold and a permanent blacklist. [cite: 1]
 
 ```c
 /*
- * File: rpl-dag.c (Iteration 1 Implementation)
+ * [cite_start]File: rpl-dag.c (Iteration 1 Implementation) [cite: 1]
  */
 #define DAO_THRESHOLD 5      /* β: Max DAOs before blacklisting */
 ...
@@ -94,11 +125,11 @@ limsd_add_to_blacklist(const uip_ipaddr_t *addr)
 * The shield was fooled and added the *innocent* node (ID 3) to the permanent blacklist.
 * **Evidence:** The log file `new_run._attacker_enabled_sheild_enabled.txt` shows:
     * **Root (ID 1):** `ID:1 [INFO: RPL ] Li-MSD: ﾜﾖ Blocked DAO #127466 from blacklisted fd00::203:3:3:3`
-    * **Victim (ID 3):** `ID:3 [WARN: Client ] No route to root yet (reachable=0)`
+    * **Victim (ID 3):** `ID:3 [WARN: Client ] No route to root yet (reachable=0)` (Found in `new_run._attacker_enabled_sheild_enabled.txt` log)
 * **Conclusion:** The shield itself became the tool for a *Persistent* DoS.
 
 ### Iteration 2: The Resilient (Temporary) Blacklist
-To fix this, the shield was redesigned to use a **temporary blacklist**. The `blacklist_entry_t` struct was modified to include a `struct ctimer`, and `limsd_add_to_blacklist` was updated to set a 60-second timeout. This allows the shield to block an attack but ensures that any innocent, blacklisted nodes are automatically "pardoned" and can rejoin the network.
+To fix this, the shield was redesigned to use a **temporary blacklist**. The `blacklist_entry_t` struct was modified to include a `struct ctimer`, and `limsd_add_to_blacklist` was updated to set a 60-second timeout. This allows the shield to block an attack but ensures that any innocent, blacklisted nodes are automatically "pardoned" and can rejoin the network. (This fix would be applied to `rpl-dag.c`).
 
 ## 5. Quantitative Results
 The following results were collected using the **final, resilient (Iteration 2)** shield.
