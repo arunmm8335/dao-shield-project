@@ -36,7 +36,7 @@ This method allows you to visually see the network and is recommended for analys
         ```
     * Run the `gradlew` command to start the Cooja GUI:
         ```bash
-        ./gradlew run -Pcooja
+        ./gradlew run -cooja
         ```
 
 2.  **Load Simulation:**
@@ -47,9 +47,7 @@ This method allows you to visually see the network and is recommended for analys
 3.  **Compile Firmware:**
     * The simulation will load. A "Compile?" dialog will appear for each of the three mote types (root, client, attacker).
     * Click **Clean** then **Compile** for each one. Cooja is using the `make` commands already defined in `dao-baseline.csc`, which are:
-        * `make root-node.cooja TARGET=cooja`
-        * `make client-node.cooja TARGET=cooja`
-        * `make attacker-node.cooja TARGET=cooja`
+        * `make TARGET=cooja`
 
 4.  **Run:**
     * Click the **Start** button in the simulation control window.
@@ -66,7 +64,7 @@ This method runs the simulation directly from your terminal, which is useful for
 2.  **Run with Gradle:**
     * Execute the `gradlew` script (located in the Contiki-NG root) and point it to the `.csc` file:
     ```bash
-    ../../gradlew run -Pcooja=dao-baseline.csc
+    ../../gradlew run -cooja=dao-baseline.csc
     ```
 *This will start the simulation, automatically build all motes using the `make` commands in the `.csc` file, and begin logging all mote output to your terminal.*
 
