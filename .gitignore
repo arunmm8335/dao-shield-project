@@ -1,0 +1,15 @@
+# Ignore build artifacts and simulation outputs
+build/
+*.o
+*.elf
+*.cooja
+*.log
+*.bak
+*.pyc
+__pycache__/
+
+# Ignore Cooja logs and results unless you want to keep final outputs
+
+# Ignore VSCode and OS files
+.vscode/
+.DS_Store
